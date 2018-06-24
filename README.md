@@ -3,4 +3,6 @@ simple goose game with vue, vuetify
 
 ## how to run
 
-simply clone this repository, then open with a browser the index.html and play!
+Clone this repository, then open the index.html with a browser and play!
+
+This game needs a minimum of two players to run.
