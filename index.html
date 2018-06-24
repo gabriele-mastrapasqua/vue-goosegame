@@ -1,0 +1,368 @@
+<html>
+<head>
+    <link href='https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Material+Icons' rel="stylesheet">
+    <script src="static/lib/vue.js"></script>
+    <!--script src="https://unpkg.com/vue/dist/vue.js"></script-->
+
+    <link href="static/lib/vuetify.min.css" rel="stylesheet">
+    <script src="static/lib/vuetify.min.js"></script>
+    <!--link href="https://unpkg.com/vuetify/dist/vuetify.min.css" rel="stylesheet"-->
+    <!--script src="https://unpkg.com/vuetify/dist/vuetify.js"></script-->
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+</head>
+<body>
+    <div id="app">
+     <v-app>
+        <v-content>
+            <v-container>
+
+                    <v-toolbar app color="cyan" dark>
+                        <img src="static/img/goose.png" width="30">
+                        <v-toolbar-title>{{title}}</v-toolbar-title>
+                        <v-spacer></v-spacer>
+                    </v-toolbar>
+
+                    
+                    <v-layout row>
+                        <v-flex xs4>
+                            <v-form v-on:submit.prevent="" ref="form" v-model="playerFormValid" lazy-validation>
+                                <v-layout row>
+                                    <v-flex xs6 >
+                                        <v-text-field v-model="playerName" :rules="playerNameRules" label="Player name" required></v-text-field>
+                                    </v-flex>
+                                    <v-flex xs2>
+                                        <v-btn type="submit" :disabled="!playerFormValid" @click="addPlayer()" color="info">Add a player</v-btn>
+                                    </v-flex>
+                                </v-layout>
+                            </v-form>
+                        </v-flex>
+
+                        <v-flex xs2>
+                            <v-btn :disabled="!gameCanStart" @click="runGame()" color="success">Roll the dice!</v-btn>
+                        </v-flex>
+                        <v-flex xs2 v-if="gameEnds">
+                            <v-btn  @click="clearGame()" color="info">Start a new game!</v-btn>
+                        </v-flex>                        
+                    </v-layout>
+          
+                <v-alert v-if="winnerPlayer" :value="gameEnds" type="success">
+                    Game finished! wins {{winnerPlayer.name}}
+                </v-alert>
+                    
+          
+    <div v-if="players && players.length > 0">
+          <v-layout row >
+                    <v-flex  xs12 sm4 >
+                        <v-card>
+                            <v-toolbar color="teal" dark>
+                            <v-toolbar-title class="text-xs-center">Players</v-toolbar-title>
+                            
+                            </v-toolbar>
+                            <v-list two-line>
+                                <template v-for="(item, index) in players">
+                                    <v-list-tile  :key="item.name" avatar @click="">
+                                        <v-list-tile-avatar>
+                                            <img :src="item.avatar">
+                                        </v-list-tile-avatar>
+                                        <v-list-tile-content>
+                                            <v-list-tile-title v-html="item.name"></v-list-tile-title>
+
+                                            <v-layout row >
+                                                <v-flex xs6>
+                                                    <div class="text-xs-center">
+                                                    <v-chip>
+                                                        <v-avatar class="teal">
+                                                            <img src="static/img/dice.png">
+                                                        </v-avatar>
+                                                    {{item.dice[0]}}
+                                                    </v-chip>
+                                                    </div>
+                                                </v-flex>
+                                                <v-flex xs6>    
+                                                    <div class="text-xs-center">
+                                                    <v-chip>
+                                                        <v-avatar class="teal">
+                                                                <img src="static/img/dice.png">
+                                                        </v-avatar>
+                                                        {{item.dice[1]}}
+                                                    </v-chip>
+                                                    </div>
+                                            </v-flex>
+                                        </v-layout>
+
+                                        </v-list-tile-content>
+
+                                        <v-list-tile-action>
+                                            Position: {{item.pos}}
+                                        </v-list-tile-action>
+                                    </v-list-tile>
+                                    
+                                </template>
+                            </v-list>
+                    </v-card>
+                </v-flex>
+
+
+                
+                <v-flex xs12 sm10 style="margin-left: 10px">
+                 
+                    <v-layout row wrap>
+                        <v-flex xs12 >
+                            <v-card>
+                                <v-toolbar color="teal" dark>
+                                    <v-toolbar-title class="text-xs-center">Game progress</v-toolbar-title>
+                                </v-toolbar>
+
+                                <div style=" height: 65px; top: 15px; position: relative " v-for="(item, index) in players">
+                                    <!--v-slider :color="item.color" :max="63" v-model="item.pos" label=" "></v-slider-->
+                                    <v-progress-linear :value="item.posPercent" height="15" :color="item.color"></v-progress-linear>
+
+                                </div>
+                            </v-card>
+                        </v-flex>                        
+                    </v-layout>
+                </v-flex>
+        
+
+            </v-layout>
+
+
+            <v-layout row wrap style="margin-top:10px">
+                    <v-flex xs12 >
+                        <v-card>
+                            <v-toolbar color="teal" dark>
+                                <v-toolbar-title class="text-xs-center">Game messages</v-toolbar-title>
+                            </v-toolbar>                            
+                            <textarea id="logs" v-model="logs" style="width: 100%"   rows="15">
+                            </textarea>
+                        </v-card>
+                </v-flex>
+            </v-layout>
+
+        </div>
+
+
+            </v-container>
+        </v-content>
+        </v-app>
+        
+       
+      
+        
+    </div>
+
+
+    <script>
+    //
+    // game logic
+    // 
+    const MAX_POS = 63;
+    const BRIDGE_POS = 6; // when on move to space 12
+    const gooseSpaces = [5, 9, 14, 18, 23, 27];
+    var spaces = new Array(MAX_POS);  // store players positions on the spaces
+    var players = [];
+    const colors = ["teal", "yellow", "lime", "orange darken-3", "green lighten-1", "red" ]; // player colors
+
+
+    class Player {
+        constructor(name) {
+            this.name = name;
+            this.pos = 0;
+            this.avatar = "static/img/1.svg"; // TODO randomize avatar icon
+            this.dice = [];
+            this.color = colors[(players.length) % colors.length];
+        }
+        // set the new position and sign on the spaces list the position of all players
+        // unset the previous position occupied to untrack that old position
+        setPos(newPos) {
+            spaces[this.pos] = undefined;
+            this.pos = newPos;
+            spaces[this.pos] = this; // points to the reference of this object
+            this.posPercent = this.pos / MAX_POS * 100;
+        }
+        // roll two dice and return the new position
+        rolldice() {
+            this.dice = [parseInt( (Math.random() * 6 ) + 1), parseInt( (Math.random() * 6 ) + 1 )]; // destructuring bind
+            var newPos = this.pos + this.dice[0] + this.dice[1];
+            window.app.writeLog(this.name, "rolls [", this.dice[0],",", this.dice[1], "]. ", this.name, "moves from ", this.pos, "to", newPos);
+            return [newPos, this.dice];
+        }
+        // move the player, check if this movement can be done. check special spaces. check if other players are on the space we're moving on
+        move(newPos) {
+            // rule: bounce back if > slot 63
+            if(newPos > MAX_POS) { 
+                var diff = (newPos - MAX_POS);
+                newPos = MAX_POS - diff;  // bounces: like 65 - 63 = 2 -> goes to: 63 - 2 = 61
+                window.app.writeLog(this.name," Bounces!", this.name,"returns to ", newPos, "with a diff of", diff);
+                return this.move(newPos);
+            } 
+        
+            // rule: bridge
+            if(newPos === BRIDGE_POS) {
+                newPos = 12;
+                window.app.writeLog(" to the bridge. ", this.name, "jumps to 12!");
+                return this.move(newPos); // jump
+            }
+
+            // rule: the goose: jump the same amout as the newPos
+            if( gooseSpaces.indexOf( newPos ) != -1 ) {
+                var goosePos = newPos + newPos;
+                window.app.writeLog(", the Goose.",this.name, "moves again and goes to ", goosePos);
+                return this.move(goosePos);
+            }
+
+            // rule: check if there are other players on the new space
+            if( spaces[newPos] !== undefined ) {
+                
+                // rule: prank - player on this space! move him on my previous position!
+                // swap players position: this player get this space, other player goes to this player old position:
+                var otherPlayer = spaces[newPos];  // get the reference the in that position points to the other player object
+                window.app.writeLog(" on ", newPos, "there is ", otherPlayer.name, "who returns to ", this.pos);
+                otherPlayer.setPos(this.pos); // move other player to my previous position
+                //this.setPos(newPos); // confirm the new position for this player
+                
+                // confirm the new position for this player is done below...
+            }
+
+            // player wins
+            if(newPos === MAX_POS) {
+                window.app.writeLog(this.name, "wins!");
+                window.app.playerWins(this);
+            }
+
+            // confirm the new position and exit
+            this.setPos(newPos);                                
+        }
+        
+    }
+
+
+    //
+    // Vue app
+    //
+    window.app = new Vue({
+        el: '#app',
+            data: {
+                // main app state
+                title: 'Game of goose! 2-6 players to play',
+                players: players,
+                playerName: '',
+                logs: "",
+
+                // game state
+                gameEnds: false,
+                winnerPlayer: null,
+                gameCanStart: false,
+
+                // validation: add player form state
+                playerFormValid: false,
+                playerNameRules: [
+                    v => !!v || 'Name is required',
+                    v => (v && v.length <= 10) || 'Name must be less than 10 characters',
+                    v => {
+                         // if there're others players do the validation: **unique usernames**
+                        if(window.app.players) {
+                            cond = true;
+                            for(var i=0; i< window.app.players.length; i++) {
+                                cond = (v !== window.app.players[i].name);
+                                if(!cond)
+                                    break;
+                            }                            
+                            return cond || '"'+v +'": already existing player';
+                        }
+                        return true;   // else bypass this validation
+                    },
+                    v => {
+                        // less then 6 players
+                        if(window.app.players) {
+                            return window.app.players.length < 6 || '6 are the maximum number of players';
+                        }
+                        return true;
+
+                    }
+                ],
+
+
+
+
+            },
+            methods: {
+                addPlayer: function() {
+                    console.log("adding a player: ", this.playerName);
+                    this.players.push(new Player(this.playerName));
+                    console.log("players: ", this.getPlayersNames() );
+                    
+                    // reset form state
+                    this.playerName = '';
+                    this.$refs.form.reset(); // reset form
+                    
+                    this.gameCanStart = false;
+                    if( this.players.length >= 2 ) {
+                        this.gameCanStart = true;
+                    }
+                },
+
+                getPlayersNames: function() {
+                    return this.players.map(function(e) {
+                        return e.name;
+                    }).join(", ");
+                },
+
+                // rolls the dice
+                runGame: function() {
+                    console.log("start a game!");
+                    this.$refs.form.reset();
+                    this.playerFormValid = false;
+
+                    this.players.forEach(e => {
+                        var [newPos, dice] = e.rolldice();
+                        e.move(newPos);
+                        window.app.writeLog("\n");
+                    });
+                    this.writeLog("----------------------------------------------------\n");
+                },
+
+                playerWins: function(player) {
+                    this.winnerPlayer = player;
+                    this.gameEnds = true;
+                    this.gameCanStart = false;
+                },
+
+                clearGame: function() {
+                    this.logs = "";
+                    this.playerName = '';
+
+                    // game state
+                    this.gameEnds = false;
+                    this.gameCanStart = false;
+                    this.winnerPlayer = null;
+
+                    // add player form state
+                    this.playerFormValid = false;
+
+                    // reset game logic
+                    spaces = new Array(MAX_POS);  // store players positions on the spaces
+                    players = [];
+                    this.players = players;
+                    this.gameCanStart = true;
+                },
+
+                // like console.log: get all args from the func call and prints them
+                writeLog: function() {
+                    var args = Array.prototype.slice.call(arguments);
+                    var str = args.join(" ");
+                    //console.log("log; ", str );
+                    this.logs += str;
+
+                    // scroll to bottom of the textarea
+                    var textarea = document.getElementById('logs');
+                    textarea.scrollTop = textarea.scrollHeight + 200 ;
+                },
+
+            }
+        });
+
+</script>
+</body>
+</html>
