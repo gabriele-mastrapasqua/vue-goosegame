@@ -1,6 +1,7 @@
 # vue-goosegame
 
-Simple goose game with vue, vuetify. the game logic is written in ES6, vue.js is used for UI state.
+Simple goose game with vue and vuetify. 
+The game logic is written in ES6 in the file game.js. Vue.js is used for UI state.
 
 Goose game is a game where two or more players move pieces around a track by rolling a die. The aim of the game is to reach square number sixty-three before any of the other players and avoid obstacles. ([wikipedia](https://en.wikipedia.org/wiki/Game_of_the_Goose))
 
@@ -8,7 +9,7 @@ Read GooseGame.md for more details and the game rules.
 
 ## how to run
 
-Clone this repository, then open the index.html with a browser and play!
+Clone this repository, then open the file index.html with a browser and play!
 
 This game needs a minimum of two players to run.
 
